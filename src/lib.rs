@@ -8,7 +8,7 @@ use std::ops::{Add, AddAssign, Mul, MulAssign};
 use std::slice::{Iter, IterMut};
 use thiserror::Error;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 ///C is the type of the coefficients of the Matrix
 ///ROWS is the number of lines & COLS the number of columns
 pub struct Matrix<C, const ROWS: usize, const COLS: usize> {
@@ -17,24 +17,56 @@ pub struct Matrix<C, const ROWS: usize, const COLS: usize> {
 
 impl<C, const ROWS: usize, const COLS: usize> Matrix<C, ROWS, COLS> {
     ///Returns an iterator of all lines of the matrix.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    ///# use matrix::Matrix;
+    /// let mat = Matrix::from([[9, 8, 7], [6, 5, 4]]);
+    /// assert_eq!(mat.get_lines().nth(1), Some(&[6, 5, 4]));
+    /// ```
     pub fn get_lines(&self) -> Iter<[C; COLS]> {
         self.data.iter()
     }
 
+    ///Returns a mutable iterator of all lines of the matrix.
+    /// See [`get_lines`] for examples.
+    ///
+    /// [`get_lines`]: #method.get_lines
     pub fn get_mut_lines(&mut self) -> IterMut<[C; COLS]> {
         self.data.iter_mut()
     }
 
-    ///Returns the n-1 line. If `index` is out of range then None.
+    ///Returns a reference to a line or `None` if index is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    ///# use matrix::Matrix;
+    /// let mat = Matrix::from([[9, 8, 7], [6, 5, 4]]);
+    /// assert_eq!(mat.get_line(1), Some(&[6, 5, 4]));
+    /// ```
     pub fn get_line(&self, index: usize) -> Option<&[C; COLS]> {
         self.data.get(index)
     }
 
+    ///Returns a mutable reference to a line or `None` if index is out of bounds.
+    /// See [`get_line`] for examples.
+    ///
+    /// [`get_line`]: #method.get_line
     pub fn get_mut_line(&mut self, index: usize) -> Option<&mut [C; COLS]> {
         self.data.get_mut(index)
     }
 
-    ///Access a coefficient. None if the indexes are greated than the size
+    ///Returns a reference to a single coefficient or `None` if either `row` or `col` is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    ///# use matrix::Matrix;
+    /// let mat = Matrix::from([[9, 8, 7], [6, 5, 4]]);
+    /// assert_eq!(mat.get(1, 2), Some(&4));
+    /// ```
     pub fn get(&self, row: usize, col: usize) -> Option<&C> {
         match self.data.get(row) {
             None => None,
@@ -42,7 +74,10 @@ impl<C, const ROWS: usize, const COLS: usize> Matrix<C, ROWS, COLS> {
         }
     }
 
-    ///Mutable access a coefficient. None if the indexes are greated than the size
+    ///Returns a mutable reference to a single coefficient or `None` if either `row` or `col` is out of bounds.
+    /// See [`get`] for examples.
+    ///
+    /// [`get`]: #method.get
     pub fn get_mut(&mut self, row: usize, col: usize) -> Option<&mut C> {
         match self.data.get_mut(row) {
             None => None,
@@ -57,12 +92,13 @@ impl<C, const ROWS: usize, const COLS: usize> From<[[C; COLS]; ROWS]> for Matrix
     }
 }
 
-///Multiplication by a coefficient. Can never fail, works for all matrices.
-impl<'a, C: 'a, const ROWS: usize, const COLS: usize> MulAssign<C> for Matrix<C, ROWS, COLS>
+///Multiplication by a coefficient. Can never fail, works matrices of all dimensions.
+///Similar to the `dilate` method of square matrices but for all lines at once.
+impl<'a, C: 'a, const ROWS: usize, const COLS: usize> MulAssign<&'a C> for Matrix<C, ROWS, COLS>
 where
-    C: MulAssign + Copy,
+    C: MulAssign<&'a C> + Copy,
 {
-    fn mul_assign(&mut self, coef: C) {
+    fn mul_assign(&mut self, coef: &'a C) {
         for row in self.data.iter_mut() {
             for c in row.iter_mut() {
                 *c *= coef
@@ -90,8 +126,35 @@ where
     }
 }
 
-///Matrix product. The implementation garuantees success by checking compatibility with ROWS and COLS bounds
-///Creates a new Martix
+///Matrix product. The implementation garuantees matrix compatibility at compile-time. If it compiles, it'll succeed.
+///
+/// # Commutativity
+///
+///Since matrix product is not commutative, the order matters.
+/// ```
+///# use matrix::Matrix;
+/// let left = Matrix::from([[1, 2], [6, 7]]);
+/// let right = Matrix::from([[3, 4], [5, 8]]);
+/// assert_ne!(right.clone()*left.clone(), left*right)
+/// ```
+///
+/// If the matrixes aren't square that also means you need to pay attention to their dimensions.
+/// If the result of the product is of dimension *n\*p*, then the *left* matrix needs to be of dimension *n\*q* and the *right* one *q\*p*.
+///
+/// ```compile_fail
+///# use matrix::Matrix;
+/// let left = Matrix::from([[1, 2], [3, 4], [5, 6]]);
+/// let right = Matrix::from([[9, 8, 7], [6, 5, 4]]);
+/// right * left //<- this fails because right is of dimension 2*3 and left 3*2
+/// ```
+///
+/// This however will compile.
+/// ```
+///# use matrix::Matrix;
+/// let left = Matrix::from([[1, 2], [3, 4], [5, 6]]);
+/// let right = Matrix::from([[9, 8, 7], [6, 5, 4]]);
+/// assert_eq!(left*right, Matrix::from([[21, 18, 15], [51, 44, 37], [81, 70, 59]]));
+///```
 impl<C, const ROWS: usize, const COLS: usize, const Q: usize> Mul<Matrix<C, Q, COLS>>
     for Matrix<C, ROWS, Q>
 where
