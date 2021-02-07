@@ -158,7 +158,7 @@ where
 impl<C, const ROWS: usize, const COLS: usize, const Q: usize> Mul<Matrix<C, Q, COLS>>
     for Matrix<C, ROWS, Q>
 where
-    //clone may be more appropriate here, is there a way not to require neither Copy nor Clone?
+    //clone may be more appropriate here, is there a way to require neither Copy nor Clone?
     C: Add + Mul<C, Output = C> + Sum + Clone,
 {
     type Output = Matrix<C, ROWS, COLS>;
@@ -188,7 +188,16 @@ impl<C, const SIZE: usize> Matrix<C, SIZE, SIZE>
 where
     C: One + Zero + Copy,
 {
-    ///Returns the identity matrix of size `SIZE`
+    ///Returns the identity matrix of size `SIZE`.
+    /// Note that this often requires type annotation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    ///# use matrix::Matrix;
+    /// let identity: Matrix<u8, 2, 2> = Matrix::identity();
+    /// assert_eq!(identity, [[1, 0], [0, 1]].into());
+    /// ```
     pub fn identity() -> Self {
         let mut m = Self::nil();
         for i in 0..SIZE {
@@ -197,7 +206,16 @@ where
         m
     }
 
-    ///Returns the nil matrix of size `SIZE`
+    ///Returns the nil matrix of size `SIZE`.
+    /// Note that this often requires type annotation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    ///# use matrix::Matrix;
+    /// let identity: Matrix<u8, 2, 2> = Matrix::nil();
+    /// assert_eq!(identity, [[0, 0], [0, 0]].into());
+    /// ```
     pub fn nil() -> Self {
         [[C::zero(); SIZE]; SIZE].into()
     }

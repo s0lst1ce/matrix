@@ -4,6 +4,7 @@ mod matrix_setup {
     use matrix::Matrix;
     use rand::{thread_rng, Rng};
 
+    #[allow(unused)]
     pub fn setup_rand_3x2() -> Matrix<u8, 3, 2> {
         let mut m = [[0; 2]; 3];
         let mut rng = thread_rng();
