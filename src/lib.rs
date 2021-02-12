@@ -1,3 +1,13 @@
+//! Simple & extensible type-checked matrixes
+//!
+//! This was made as a learning project and thrives to provide matrices generic over any type.
+//! Some basic matrix manipulation operations are implemented for the matrix assuming the concrete type implements the required traits.
+//! The main selling point is that most operations fail to compile if the operation is impossible. This is done through the use of `min_const_generic` (rustc v1.51) and allows operations such as matrix product to always work if the code compiles.
+//!
+//! Although most operations implemented are done so with mathematical matrices in mind the type itself can be used for any use-case
+//!
+//! For how to use this crate, refer to [`Matrix`]
+
 #![feature(maybe_uninit_extra)]
 #![feature(array_methods)]
 use num::traits::{One, Zero};
@@ -9,8 +19,9 @@ use std::slice::{Iter, IterMut};
 use thiserror::Error;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-///C is the type of the coefficients of the Matrix
-///ROWS is the number of lines & COLS the number of columns
+/// Matrix type generic over its coefficient and dimensions
+///
+/// This struct contains most of the crate's features.
 pub struct Matrix<C, const ROWS: usize, const COLS: usize> {
     data: [[C; COLS]; ROWS],
 }
@@ -226,9 +237,19 @@ impl<'a, C: 'a, const SIZE: usize> Matrix<C, SIZE, SIZE>
 where
     C: Clone + MulAssign<&'a C> + AddAssign<&'a C>,
 {
-    ///Permutation operation between `source` and `target` rows
+    /// Permutes two rows.
     ///
-    ///This can be understood as swapping the `source` row with the `target` one
+    /// Permutation is an operation that can be understood as swapping a line for another.
+    /// Returns an Error if either `source` of `target` is out of bounds, that is greater than `SIZE`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    ///# use matrix::Matrix;
+    /// let mut mat = Matrix::from([[1, 2, 1], [3, 4, 1], [5, 6, 1]]);
+    /// mat.permute(0, 1);
+    /// assert_eq!(mat, Matrix::from([[3, 4, 1], [1, 2, 1], [5, 6, 1]])); //look at the order of the lines
+    ///```
     pub fn permute(&mut self, source: usize, target: usize) -> Result<(), Error> {
         if (target >= SIZE) | (source >= SIZE) {
             return Err(Error::OutOfBounds);
@@ -238,9 +259,19 @@ where
         Ok(())
     }
 
-    ///Dilation operation on row `row`.
+    /// Dilates a row
     ///
-    ///Line dilation is to multiply all coefficients of a row by a factor
+    /// To dilate a row is to multiply all the coefficients of the row by a factor.
+    /// Returns an Error if `row` is out of bounds, that is greater than `SIZE`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    ///# use matrix::Matrix;
+    /// let mut mat = Matrix::from([[1, 2, 1], [3, 4, 1], [5, 6, 1]]);
+    /// mat.dilate(0, &2);
+    /// assert_eq!(mat, Matrix::from([[2, 4, 2], [3, 4, 1], [5, 6, 1]]));
+    ///```
     pub fn dilate(&mut self, row: usize, factor: &'a C) -> Result<(), Error> {
         match self.data.get_mut(row) {
             None => Err(Error::OutOfBounds),
@@ -254,9 +285,25 @@ impl<C, const SIZE: usize> Matrix<C, SIZE, SIZE>
 where
     for<'a> C: Clone + MulAssign<&'a C> + AddAssign<&'a C>,
 {
-    ///Transvection operation on row `source` with row `other` and `factor`
+    /// Applies a transvection from a row to another
     ///
-    ///Line transvection is to add a row to a source row for each coefficient
+    /// Tto transvect is to add a row to another, coefficient by coefficient.
+    /// Returns OutOfBounds if either `source` of `other` is out of bounds, that is greater than `SIZE`.
+    ///
+    /// In debug it will also return WrongOperation `source` and `other` are the same row.
+    /// If you encounter this issue, use [`dilate`] instead.
+    /// Because the operation can also with `transvect` although [`dilate`] is better, `WrongOperation` never occurs in release.
+    ///
+    /// [`dilate`]: #method.dilate
+    ///
+    /// # Examples
+    ///
+    /// ```
+    ///# use matrix::Matrix;
+    /// let mut mat = Matrix::from([[1, 2, 1], [3, 4, 1], [5, 6, 1]]);
+    /// mat.transvect(0, 2);
+    /// assert_eq!(mat, Matrix::from([[6, 8, 2], [3, 4, 1], [5, 6, 1]]));
+    ///```
     pub fn transvect(&mut self, source: usize, other: usize) -> Result<(), Error> {
         if (other >= SIZE) | (source >= SIZE) {
             return Err(Error::OutOfBounds);
