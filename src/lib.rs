@@ -290,9 +290,8 @@ where
     /// Tto transvect is to add a row to another, coefficient by coefficient.
     /// Returns OutOfBounds if either `source` of `other` is out of bounds, that is greater than `SIZE`.
     ///
-    /// In debug it will also return WrongOperation `source` and `other` are the same row.
+    /// WrongOperation is returned if `source` and `other` are the same row.
     /// If you encounter this issue, use [`dilate`] instead.
-    /// Because the operation can also with `transvect` although [`dilate`] is better, `WrongOperation` never occurs in release.
     ///
     /// [`dilate`]: #method.dilate
     ///
@@ -308,6 +307,7 @@ where
         if (other >= SIZE) | (source >= SIZE) {
             return Err(Error::OutOfBounds);
         } else if other == source {
+            //consider calling dilate instead in release
             return Err(Error::WrongOperation);
         } else {
             let slices = self.data.as_mut_slice().split_at_mut(source.max(other));
